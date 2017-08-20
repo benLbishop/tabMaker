@@ -56,19 +56,27 @@ class Network(object):
             a = sigmoid(np.dot(w, a) + b)
         return a
     
-    def SGD(self, training_data, epochs, mini_batch_size, eta,
+    def SGD(self, training_data, max_epochs, mini_batch_size, init_eta,
             lmbda = 0.0,
             evaluation_data=None,
             monitor_evaluation_cost=False,
             monitor_evaluation_accuracy=False,
             monitor_training_cost=False,
-            monitor_training_accuracy=False):
+            monitor_training_accuracy=False,
+            n_stop=10):
         if evaluation_data: n_data = len(evaluation_data)
         n = len(training_data)
         evaluation_cost, evaluation_accuracy = [], []
         training_cost, training_accuracy = [], []
         
-        for j in xrange(epochs):
+        epoch_index = 0
+        best_result_index = 0
+        weights_at_best = self.weights
+        biases_at_best = self.biases
+        best_result = 0
+        eta = init_eta
+            
+        while (epoch_index < max_epochs and best_result_index + n_stop > epoch_index and eta > init_eta*(1/128.0)):
             random.shuffle(training_data)
             mini_batches = [training_data[k:k+mini_batch_size] for k in xrange(0, n, mini_batch_size)]
             for mini_batch in mini_batches:
@@ -88,10 +96,26 @@ class Network(object):
                 print "Cost on evaluation data: {}".format(self.accuracy(evaluation_data, n_data))
             if monitor_evaluation_accuracy:
                 accuracy = self.accuracy(evaluation_data)
+                if (accuracy > best_result):
+                    best_result = accuracy
+                    best_result_index = epoch_index
+                    weights_at_best = self.weights
+                    biases_at_best= self.biases
                 evaluation_accuracy.append(accuracy)
-                print "Epoch {0}: {1} / {2}".format(j, self.accuracy(evaluation_data), n_data)
-                #print "Accuracy on evaluation data: {} / {}".format(self.accuracy(evaluation_data), n_data)
-        print "Best Result: " +  str(max(evaluation_accuracy)) + " / " + str(n_data)
+                #print "Epoch {0}: {1} / {2}".format(epoch_index, self.accuracy(evaluation_data), n_data)
+            if (epoch_index > best_result_index + n_stop/2.0):
+                eta = 0.5*eta
+                if (eta <= init_eta*(1/128.0)):
+                    print "terminating due to reaching {} eta.".format(init_eta*(1/128.0))
+            epoch_index += 1
+            if (epoch_index >= best_result_index + n_stop):
+                print "terminating due to n_stop."
+            elif (epoch_index >= max_epochs):
+                print "terminating due to max_epoch."
+        print "Best Result: " +  str(max(evaluation_accuracy)) + " / " + str(n_data) + "\n"
+        #update weights and biases to be those found at best results
+        self.weights = weights_at_best
+        self.biases = biases_at_best
         return evaluation_cost, evaluation_accuracy, training_cost, training_accuracy
         
     def updateMiniBatch(self, mini_batch, eta, lmbda, n):

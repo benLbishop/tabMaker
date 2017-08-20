@@ -13,7 +13,7 @@ import operator
 
 NOTE_TABLE = ["a", "b", "c", "d", "e", "f", "g", "as", "cs", "ds", "fs", "gs" , "d8"]   
 
-path = 's2.pkl'
+path = 'convertedFiles/s2.pkl'
 all_data = wave_loader.loadWrapper(path)
 
 training_data, validation_data, test_data = all_data[0]
@@ -32,7 +32,7 @@ lmbda_vals = [0.2, 0.6, 1.0, 1.4, 5.0]
 
 
 net2 = network2.Network([EPOCH_LENGTH, 30, 70, NUM_NOTES], cost=network2.CrossEntropyCost)
-net2.SGD(training_data, 30, 10, 1.5,
+net2.SGD(training_data, 60, 10, 1.5,
         lmbda = 0.5,
         evaluation_data=validation_data,
         monitor_evaluation_accuracy=True,
