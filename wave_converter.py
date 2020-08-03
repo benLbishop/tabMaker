@@ -22,25 +22,24 @@ def main():
         (custom test data is optional. Otherwise, the data will be split into 70% \
         training data, 15% validation data, and 15% test data.)"
         sys.exit(0)
-    elif len(sys.argv) == 4:
-        test_data = sys.argv[3]
-    elif len(sys.argv) > 4:
+    elif len(sys.argv) > 3:
         print "Too many inputs recognized. Usage is: \
         python wave_converter.py <directory> <desired file for data to be stored> <custom test data>\n \
         (custom test data is optional. Otherwise, the data will be split into 70% \
         training data, 15% validation data, and 15% test data.)"
+        sys.exit(1)
         
     DIRECTORY = sys.argv[1]
     DESTINATION_FILE = sys.argv[2]
 
     EPOCH_LENGTH = 882  #corresponds to 50 nps. .wav files run at 44100 samples a second.
-    #NOTE_TABLE = {"a":0, "d":1, "e":2 , "b":3}    
-    
+    NOTE_TABLE = {}    
+    """
     NOTE_TABLE = {  # an 's' after a note corresponds to a sharp (#).
     "a4": 0, \
     "b4": 1, \
     "c4": 2, \
-    "d4": 3, \
+    "d3": 3, \
     "e3": 4, \
     "f3": 5, \
     "g3": 6, \
@@ -49,19 +48,20 @@ def main():
     "ds3": 9, \
     "fs3": 10, \
     "gs3": 11, \
-    "d3": 12}
-    
-    NUM_NOTES = len(NOTE_TABLE)
-    param_info = (EPOCH_LENGTH, NUM_NOTES)
+    "d4": 12}
+    """
     PERCENT_TRAINING = 0.7  #percentage of data to be used as training data
     
     full_data = loadAllWaves(DIRECTORY, EPOCH_LENGTH, NOTE_TABLE)
     
-    split_data = separateData(full_data, len(full_data), PERCENT_TRAINING, test_data)    
+    NUM_NOTES = len(NOTE_TABLE)
+    param_info = (EPOCH_LENGTH, NUM_NOTES, NOTE_TABLE)
+    split_data = separateData(full_data, len(full_data), PERCENT_TRAINING)    
     
     print "storing data in " + DESTINATION_FILE
     destfile = open(DESTINATION_FILE,'wb')
     cPickle.dump(split_data, destfile)      #dump the tuple (training_data, validation_data, test_data)
+    #CHANGED
     cPickle.dump(param_info, destfile)      #dump the tuple (epoch_len, num_notes)
     destfile.close()
     print "storing complete. Network ready to test."
@@ -87,7 +87,9 @@ def loadAllWaves(directory, epoch_len, note_table):
         if filename.endswith(".wav"):
             print "Loading " + filename
             note = filename[0:3].replace("_","").lower()    #look for the desired note
-            d = waveToList(directory+"/"+filename, epoch_len, note_table[note])
+            #CHANGED NEXT 2 LINES
+            note_table[note] = count
+            d = waveToList(directory+"/"+filename, epoch_len, count)
             full_data += d
             count += 1
     print str(count) + " wav files loaded successfully."
@@ -159,7 +161,7 @@ def spliceFrames(channel, epoch):
     x = [list(channel[i:i + epoch]) for i in range(0, total_frames, epoch)]
     return (x, len(x))
 
-def separateData(data, num_entries, PERCENT_TRAINING, custom_test):
+def separateData(data, num_entries, PERCENT_TRAINING):
     """
     separate data into training, test, and validation groups.
     """
@@ -170,34 +172,19 @@ def separateData(data, num_entries, PERCENT_TRAINING, custom_test):
     
     print "Separating data into training, validation, and test sets..."
 
-    if (custom_test):
-        print "Custom test data recognized"
-        test_data = waveToList(custom_test, 882, None)
-        PERCENT_VALIDATION = 1 - PERCENT_TRAINING
-        random.shuffle(data)
-        random.shuffle(test_data)
-        brk = int(PERCENT_TRAINING*num_entries)
-        training_data = data[:brk]
-        validation_data = data[brk:]
-        #print "last training before:" + str(training_data[-1])
-        tr = convertToTuple(training_data)
-        #print "last training entry: ({0}, {1})".format(training_data[0][-1], training_data[1][-1])
-        va = convertToTuple(validation_data)
-        te = test_data
-    else:
-        PERCENT_VALIDATION = (1 - PERCENT_TRAINING)/2.0
-        PERCENT_TEST = PERCENT_VALIDATION
-        
-        random.shuffle(data)
-        break1 = int(PERCENT_TRAINING*num_entries)
-        break2 = break1 + int(PERCENT_TEST*num_entries)
-        training_data = data[:break1]
-        validation_data = data[break1:break2]
-        test_data = data[break2:]
-        
-        tr = convertToTuple(training_data)
-        va = convertToTuple(validation_data)
-        te = convertToTuple(test_data)
+    PERCENT_VALIDATION = (1 - PERCENT_TRAINING)/2.0
+    PERCENT_TEST = PERCENT_VALIDATION
+    
+    random.shuffle(data)
+    break1 = int(PERCENT_TRAINING*num_entries)
+    break2 = break1 + int(PERCENT_TEST*num_entries)
+    training_data = data[:break1]
+    validation_data = data[break1:break2]
+    test_data = data[break2:]
+    
+    tr = convertToTuple(training_data)
+    va = convertToTuple(validation_data)
+    te = convertToTuple(test_data)
     return (tr, va, te)
     
 def convertToTuple(data):
@@ -215,8 +202,6 @@ def convertToTuple(data):
         a.append(data_pt[0])
         b.append(data_pt[1])
     return (a, b)
-        
     
 if __name__ == "__main__":
     main()
-

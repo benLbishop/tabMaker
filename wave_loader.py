@@ -7,6 +7,7 @@ Created on Sun Aug 13 11:34:36 2017
 
 import cPickle
 import numpy as np
+import wave_converter as wc
 
 def loadWaveData(path):
     f = open(path)
@@ -14,12 +15,12 @@ def loadWaveData(path):
     #leaving it for purpose of seeing what data is loaded
     training_data, validation_data, test_data = cPickle.load(f)
     data = (training_data, validation_data, test_data)
-    EPOCH_LENGTH, NUM_NOTES = cPickle.load(f)
-    params = (EPOCH_LENGTH, NUM_NOTES)
+    EPOCH_LENGTH, NUM_NOTES, NOTE_TABLE = cPickle.load(f)
+    params = (EPOCH_LENGTH, NUM_NOTES, NOTE_TABLE)
     f.close()
     
     print len(validation_data[0])
-    print len(test_data[0])
+    print len(NOTE_TABLE)
     return (data, params)
     
 def loadWrapper(filename):
@@ -38,7 +39,7 @@ def loadWrapper(filename):
     """
     loaded_data = loadWaveData(filename)
     tr_d, va_d, te_d = loaded_data[0]
-    EPOCH_LENGTH, NUM_NOTES = loaded_data[1]
+    EPOCH_LENGTH, NUM_NOTES, NOTE_TABLE = loaded_data[1]
     
     training_inputs = [np.reshape(x, (EPOCH_LENGTH, 1)) for x in tr_d[0]]
     training_results = [vectorized_result(y, NUM_NOTES) for y in tr_d[1]]
@@ -54,7 +55,7 @@ def loadWrapper(filename):
         test_data = [np.reshape(x, (EPOCH_LENGTH, 1)) for x in te_d]
     
     data = (training_data, validation_data, test_data)
-    params = (EPOCH_LENGTH, NUM_NOTES)
+    params = (EPOCH_LENGTH, NUM_NOTES, NOTE_TABLE)
     return (data, params)
     
 def vectorized_result(j, NUM_NOTES):
@@ -67,3 +68,8 @@ def vectorized_result(j, NUM_NOTES):
     e = np.zeros((NUM_NOTES, 1))
     e[j] = 1.0
     return e
+    
+def loadTest(filename):
+    raw = wc.waveToList(filename, 882, None)
+    result = [np.reshape(x, (882, 1)) for x in raw]
+    return result
